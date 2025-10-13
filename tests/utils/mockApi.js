@@ -3,13 +3,32 @@
 async function basicInit(page) {
         let loggedInUser = null;
         const TOKEN = 'abcdef';
+        function matchesUser(u, pattern) {
+          if (!pattern || pattern === '*') return true;
+          const rx = new RegExp('^' + String(pattern).replace(/[.*+?^${}()|[\]\\]/g, m => '\\' + m).replace(/\\\*/g, '.*') + '$', 'i');
+          return rx.test(u.name || '') || rx.test(u.email || '');}
       
         // valid users
         let validUsers = {
           'a@jwt.com': { id: 1, name: 'cooper johnston', email: 'a@jwt.com', password: 'admin', roles: [{ role: 'admin' }] },
           't@jwt.com': { id: 2, name: 'test',     email: 't@jwt.com', password: 'test',  roles: [{ role: 'franchisee' }] },
           
+          
         };
+
+        let nextUserId = 3; // if you already add users via register, set this accordingly
+
+
+// helper: return user without password
+function publicUser(u) {
+  const { password, ...rest } = u || {};
+  return rest;
+}
+
+// helper: lookup by id
+function getUserById(id) {
+  return Object.values(validUsers).find(u => u.id === id) || null;
+}
     
         function publicUser(u) {
             const { password, ...pub } = u || {};
@@ -292,10 +311,82 @@ async function basicInit(page) {
           const orderReq = readJSON(route.request());
           return route.fulfill({ status: 200, json: { order: { ...orderReq, id: 23 }, jwt: 'eyJpYXQ' } });
         });
+
+        await page.route(/\/api\/user(\?.*)?$/, async (route) => {
+          const req = route.request();
+          if (req.method() !== 'GET') return route.fallback();
+        
+          // auth
+          const auth = req.headers()['authorization'] || '';
+          if (auth !== `Bearer ${TOKEN}` || !isAdmin(loggedInUser)) {
+            return route.fulfill({ status: 403, json: { message: 'forbidden' } });
+          }
+        
+          // parse query
+          const url = new URL(req.url());
+          const pageQ  = Number(url.searchParams.get('page') || '0');
+          const limitQ = Number(url.searchParams.get('limit') || '10');
+          const nameQ  = url.searchParams.get('name') || '*';
+        
+          const page  = Number.isFinite(pageQ) && pageQ >= 0 ? pageQ : 0;
+          const limit = Number.isFinite(limitQ) && limitQ > 0 ? Math.min(limitQ, 100) : 10;
+        
+          
+          const all = Object.values(validUsers)
+            .map(publicUser)
+            .sort((a,b) => a.id - b.id)
+            .filter(u => matchesUser(u, nameQ));
+        
+          const start = page * limit;
+          const end   = start + limit;
+          const users = all.slice(start, end);
+          const more  = end < all.length;
+        
+          return route.fulfill({ status: 200, json: { users, more } });
+        });
+
+        await page.route(/\/api\/user\/\d+$/, async (route) => {
+          const req = route.request();
+          if (req.method() !== 'DELETE') return route.fallback();
+        
+          // auth
+          const auth = req.headers()['authorization'] || '';
+          if (auth !== `Bearer ${TOKEN}` || !isAdmin(loggedInUser)) {
+            return route.fulfill({ status: 403, json: { message: 'forbidden' } });
+          }
+        
+          const url = new URL(req.url());
+          const id = Number(url.pathname.split('/').pop());
+        
+          if (!Number.isInteger(id) || id <= 0) {
+            return route.fulfill({ status: 400, json: { message: 'invalid user id' } });
+          }
+        
+          const target = getUserById(id);
+          if (!target) {
+            return route.fulfill({ status: 404, json: { message: 'user not found' } });
+          }
+        
+          // prevent self-delete (optional but friendly)
+          if (loggedInUser && loggedInUser.id === id) {
+            return route.fulfill({ status: 403, json: { message: 'cannot delete yourself' } });
+          }
+        
+          // remove from validUsers (keyed by email)
+          delete validUsers[target.email];
+        
+          // optional: scrub from franchises.admins lists if you keep those in-memory
+          for (const f of franchises.values()) {
+            f.admins = (f.admins || []).filter(a => a.id !== id);
+          }
+        
+          return route.fulfill({ status: 200, json: { message: 'user deleted' } });
+        });
       
         await page.goto('/');
       }
       
+
   
   
 export default basicInit;

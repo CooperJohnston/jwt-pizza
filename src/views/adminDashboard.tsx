@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import NotFound from './notFound';
 import Button from '../components/button';
 import { pizzaService } from '../service/service';
-import { Franchise, FranchiseList, Role, Store, User } from '../service/pizzaService';
+import { Franchise, FranchiseList, Role, Store, User, UserList } from '../service/pizzaService';
 import { TrashIcon } from '../icons';
 
 interface Props {
@@ -23,6 +23,31 @@ export default function AdminDashboard(props: Props) {
     })();
   }, [props.user, franchisePage]);
 
+  const [usersList, setUsersList] = React.useState<UserList>({ users: [], more: false });
+  const [usersPage, setUsersPage] = React.useState(0);
+  const filterUsersRef = React.useRef<HTMLInputElement>(null);
+
+React.useEffect(() => {
+  (async () => {
+    if (Role.isRole(props.user, Role.Admin)) {
+      setUsersList(await pizzaService.getUsers(usersPage, 10, '*'));
+    }
+  })();
+}, [props.user, usersPage]);
+
+async function filterUsers() {
+  const pattern = `*${filterUsersRef.current?.value || ''}*`;
+  setUsersList(await pizzaService.getUsers(0, 10, pattern)); // reset to first page
+  setUsersPage(0);
+}
+
+async function deleteUser(u: User) {
+  // optional confirm
+  if (!confirm(`Delete user ${u.name}?`)) return;
+  await pizzaService.deleteUser(u.id!);
+  // refresh current page
+  setUsersList(await pizzaService.getUsers(usersPage, 10, filterUsersRef.current?.value ? `*${filterUsersRef.current.value}*` : '*'));
+}
   function createFranchise() {
     navigate('/admin-dashboard/create-franchise');
   }
@@ -95,6 +120,8 @@ export default function AdminDashboard(props: Props) {
                           </tbody>
                         );
                       })}
+
+                      
                       <tfoot>
                         <tr>
                           <td className="px-1 py-1">
@@ -123,8 +150,91 @@ export default function AdminDashboard(props: Props) {
         <div>
           <Button className="w-36 text-xs sm:text-sm sm:w-64" title="Add Franchise" onPress={createFranchise} />
         </div>
+        {/* Users */}
+<div className="text-start py-8 px-4 sm:px-6 lg:px-8">
+  <h3 className="text-neutral-100 text-xl">Users</h3>
+  <div className="bg-neutral-100 overflow-clip my-4">
+    <div className="flex flex-col">
+      <div className="-m-1.5 overflow-x-auto">
+        <div className="p-1.5 min-w-full inline-block align-middle">
+          <div className="overflow-hidden">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="uppercase text-neutral-100 bg-slate-400 border-b-2 border-gray-500">
+                <tr>
+                  {['Name', 'Email', 'Roles', 'Action'].map((h) => (
+                    <th key={h} scope="col" className="px-6 py-3 text-center text-xs font-medium">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {usersList.users.map((u) => (
+                  <tr key={u.id} className="bg-neutral-100">
+                    <td className="text-start px-2 whitespace-nowrap text-sm text-gray-800">{u.name}</td>
+                    <td className="text-start px-2 whitespace-nowrap text-sm text-gray-800">{u.email}</td>
+                    <td className="text-start px-2 whitespace-nowrap text-sm text-gray-800">
+                      {u.roles?.map(r => r.role).join(', ')}
+                    </td>
+                    <td className="px-6 py-1 whitespace-nowrap text-end text-sm font-medium">
+                      <button
+                        type="button"
+                        className="px-2 py-1 inline-flex items-center gap-x-2 text-sm font-semibold rounded-lg border border-1 border-orange-400 text-orange-400 hover:border-orange-800 hover:text-orange-800 disabled:opacity-50"
+                        onClick={() => deleteUser(u)}
+                        disabled={u.id === props.user?.id}
+                        title={u.id === props.user?.id ? 'Cannot delete yourself' : 'Delete user'}
+                      >
+                        <TrashIcon /> Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td className="px-1 py-1">
+                    <input
+                      type="text"
+                      ref={filterUsersRef}
+                      name="filterUsers"
+                      placeholder="Filter users"
+                      className="px-2 py-1 text-sm border border-gray-300 rounded-lg"
+                    />
+                    <button
+                      type="submit"
+                      className="ml-2 px-2 py-1 text-sm font-semibold rounded-lg border border-orange-400 text-orange-400 hover:border-orange-800 hover:text-orange-800"
+                      onClick={filterUsers}
+                    >
+                      Submit
+                    </button>
+                  </td>
+                  <td colSpan={3} className="text-end text-sm font-medium">
+                    <button
+                      className="w-12 p-1 text-sm font-semibold rounded-lg border border-transparent bg-white text-grey border-grey m-1 hover:bg-orange-200 disabled:bg-neutral-300"
+                      onClick={() => setUsersPage(usersPage - 1)}
+                      disabled={usersPage <= 0}
+                    >
+                      «
+                    </button>
+                    <button
+                      className="w-12 p-1 text-sm font-semibold rounded-lg border border-transparent bg-white text-grey border-grey m-1 hover:bg-orange-200 disabled:bg-neutral-300"
+                      onClick={() => setUsersPage(usersPage + 1)}
+                      disabled={!usersList.more}
+                    >
+                      »
+                    </button>
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
       </View>
     );
+    
   }
 
   return response;
