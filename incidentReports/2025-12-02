@@ -1,0 +1,82 @@
+# Incident: 2025-12-02 11-56-15
+
+## Summary
+
+```md
+
+Between the hour of 11:56 to 12:30 on Dec 2, 3 users encountered failures to access the login and purchasing systems. The event was triggered by a factory error at 11:56. The error contained materials provided by the CS329 class. The event was detected by the Grafan order failure metric. The team started working on the event by inspecting the logs. This 1 incident affected 100% of users.
+
+There was further impact as noted by 12 failed pizza purchases that were attempted to be ordered in relation to this incident.
+```
+
+## Detection
+
+
+```md
+
+
+This incident was detected when the Grafana Failed order alert was triggered and Cooper was paged. He had a fairly merciful threshold on the notification so next time he will allow zero errors.
+
+```
+
+## Impact
+
+
+```md
+
+
+For 34 minutes all of our users experienced this incident.
+
+
+```
+
+## Timeline
+
+
+```md
+
+All times are UTC.
+
+- _11:56_ - Chaos causes the orders to fail
+- _12:30_ - Cooper responds to the order and clicks the fixing link
+- _12:31_ - Pizza Ordered correctly agai
+```
+
+## Response
+
+```md
+**EXAMPLE**:
+
+Cooper read the very first error message and then fixed it by clicking the link.
+```
+
+## Root cause
+
+```md
+
+I clicked the chaos button on the website, so next time I will not click on it.
+
+```
+
+## Resolution
+
+
+```md
+
+Checkig the logs and clicking on the link in the logs.
+
+```
+
+## Prevention
+
+```md
+I won't click any buttons that say initiate chaos.
+```
+
+## Action items
+
+```md
+**EXAMPLE**:
+
+1. Don't click on chaos buttons.
+```
