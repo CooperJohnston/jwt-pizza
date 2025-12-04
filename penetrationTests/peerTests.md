@@ -1,4 +1,4 @@
-
+## Cooper and Trevor's Attacking stuff
 ### Coopers Self attack record
 
 | Item           | Result                                                                         |
@@ -11,3 +11,10 @@
 | Images         |  <img width="1070" height="975" alt="Screenshot 2025-12-04 at 12 40 21 PM" src="https://github.com/user-attachments/assets/eef742a9-7825-40e3-a5d7-9a254a636e13" />|
 | Corrections    | More sanitized user inputs made                                                        |
 
+### Trevors Self Attack
+
+### Cooper attacks Trevor
+
+### Trevor attacks Cooper
+
+### What we learned
